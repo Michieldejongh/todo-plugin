@@ -72,19 +72,31 @@ const HTML = `<!DOCTYPE html>
   .col-open  .col-header h2 { color: var(--open); }
   .col-done  .col-header h2 { color: var(--done); }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; transition: box-shadow 0.1s, opacity 0.15s; opacity: 0.55; }
-  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); opacity: 1; }
-  .card.hot { opacity: 1; border-color: #cbd5e1; box-shadow: 0 1px 3px rgba(29,78,216,0.08); }
-  .card.hot:hover { box-shadow: 0 4px 12px rgba(29,78,216,0.12); }
+  /* Card — Tailwind Plus-style divided container */
+  .card { background: var(--surface); border-radius: 10px; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(15,23,42,0.05), 0 0 0 1px rgba(15,23,42,0.05); transition: box-shadow 0.15s, opacity 0.15s; opacity: 0.55; overflow: hidden; }
+  .card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.08), 0 0 0 1px rgba(15,23,42,0.08); opacity: 1; }
+  .card.hot { opacity: 1; box-shadow: 0 1px 3px rgba(29,78,216,0.10), 0 0 0 1px rgba(29,78,216,0.18); }
+  .card.hot:hover { box-shadow: 0 6px 18px rgba(29,78,216,0.15), 0 0 0 1px rgba(29,78,216,0.25); }
   .card.dimmed { opacity: 0.45; }
   .card.dimmed:hover { opacity: 0.85; }
+
+  .card-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 
   /* contenteditable shared style */
   [contenteditable] { outline: none; border-radius: 3px; }
   [contenteditable]:focus { box-shadow: 0 0 0 2px var(--edit-outline); background: #f8faff; }
   [contenteditable]:empty:before { content: attr(data-placeholder); color: var(--muted); pointer-events: none; }
 
-  .card-title { font-weight: 800; font-size: 13.5px; line-height: 1.4; word-break: break-word; padding: 1px 3px; cursor: text; }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .card-title { font-weight: 800; font-size: 14px; line-height: 1.4; word-break: break-word; padding: 1px 3px; cursor: text; color: #0f172a; flex: 1; min-width: 0; }
+
+  /* Status pill (shrink-0 naast titel) */
+  .status-pill { flex-shrink: 0; display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; line-height: 1.4; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+  .status-pill.status-bezig { background: #eff6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1px rgba(29,78,216,0.20); }
+  .status-pill.status-open { background: #f1f5f9; color: #475569; box-shadow: inset 0 0 0 1px rgba(71,85,105,0.20); }
+  .status-pill.status-urgent { background: #fef3c7; color: #92400e; box-shadow: inset 0 0 0 1px rgba(146,64,14,0.20); }
+  .status-pill.status-overdue { background: #fef2f2; color: #b91c1c; box-shadow: inset 0 0 0 1px rgba(185,28,28,0.20); }
+  .status-pill.status-done { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px rgba(4,120,87,0.20); }
 
   .card-meta { font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   .tag { background: var(--tag-bg); border-radius: 4px; padding: 1px 6px; white-space: nowrap; cursor: text; }
@@ -130,25 +142,38 @@ const HTML = `<!DOCTYPE html>
   }
   .note-row.saved-flash { animation: save-flash 900ms ease-out; border-radius: 4px; }
 
-  .notes { border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 5px; }
-  .note-row { display: flex; align-items: flex-start; gap: 6px; }
-  .note-date { font-size: 11px; color: var(--muted); opacity: 0.7; white-space: nowrap; padding-top: 1px; flex-shrink: 0; }
-  .note-text { font-size: 12px; color: var(--muted); flex: 1; padding: 1px 3px; cursor: text; word-break: break-word; }
+  /* Notes — timeline style met verticale lijn en dots */
+  .notes { padding-top: 4px; display: flex; flex-direction: column; gap: 0; }
+  .note-row { position: relative; display: flex; gap: 10px; padding-bottom: 14px; }
+  .note-row:last-child { padding-bottom: 0; }
+  .note-row::before { content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 1px; background: #e2e8f0; }
+  .note-row:last-child::before { display: none; }
+  .note-dot { position: relative; z-index: 1; flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: var(--surface); }
+  .note-dot::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #f1f5f9; box-shadow: 0 0 0 2px #cbd5e1; }
+  .note-body { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: flex-start; padding: 1px 0; }
+  .note-text { font-size: 12px; color: #64748b; flex: 1; cursor: text; word-break: break-word; line-height: 1.5; padding: 1px 3px; }
+  .note-date { font-size: 11px; color: #94a3b8; white-space: nowrap; flex-shrink: 0; padding-top: 1px; }
   .note-del { font-size: 11px; color: var(--danger); cursor: pointer; padding: 1px 4px; border-radius: 3px; flex-shrink: 0; line-height: 1.4; }
   .note-del:hover { background: #fef2f2; }
-.add-note-row { display: flex; gap: 6px; margin-top: 2px; }
-  .add-note-row input { flex: 1; border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; font-size: 12px; outline: none; }
-  .add-note-row input:focus { border-color: var(--accent); }
-  .add-note-row button { padding: 4px 10px; font-size: 12px; border-radius: 5px; border: 1px solid var(--border); cursor: pointer; background: var(--surface); }
 
-  .card-actions { display: flex; gap: 6px; margin-top: 2px; }
-  .card-actions button { font-size: 11.5px; padding: 3px 10px; border-radius: 5px; border: 1px solid var(--border); cursor: pointer; background: var(--surface); color: var(--text); flex: 1; }
-  .card-actions button:hover { background: var(--bg); }
-  .card-actions button.promote { border-color: var(--accent); color: var(--accent); }
-  .card-actions button.promote:hover { background: #eff6ff; }
-  .card-actions button.demote { color: var(--muted); }
-  .card-actions button.danger { color: var(--danger); border-color: transparent; flex: none; padding: 3px 8px; }
-  .card-actions button.danger:hover { background: #fef2f2; }
+  /* Add-note form — textarea met inset-ring en focus-ring, knop rechtsonder */
+  .add-note-form { position: relative; margin-top: 6px; }
+  .add-note-form textarea { display: block; width: 100%; resize: none; background: transparent; padding: 8px 12px 36px; font: inherit; font-size: 13px; color: #0f172a; border-radius: 8px; border: none; box-shadow: inset 0 0 0 1px #cbd5e1; outline: none; transition: box-shadow 0.12s; line-height: 1.5; min-height: 34px; }
+  .add-note-form textarea::placeholder { color: #94a3b8; }
+  .add-note-form textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+  .add-note-form .add-note-submit { position: absolute; right: 6px; bottom: 6px; border-radius: 6px; background: var(--surface); color: #0f172a; font-size: 12px; font-weight: 600; padding: 4px 10px; box-shadow: inset 0 0 0 1px #cbd5e1; cursor: pointer; border: none; }
+  .add-note-form .add-note-submit:hover { background: #f8fafc; }
+
+  /* Card footer — divided action bar, Tailwind Plus stijl */
+  .card-footer { display: flex; border-top: 1px solid #e2e8f0; }
+  .card-footer button { flex: 1; background: transparent; border: none; padding: 11px 8px; font-size: 12.5px; font-weight: 600; color: #0f172a; cursor: pointer; }
+  .card-footer button:not(:last-child) { border-right: 1px solid #e2e8f0; }
+  .card-footer button:hover { background: #f8fafc; }
+  .card-footer button.promote { color: var(--accent); }
+  .card-footer button.promote:hover { background: #eff6ff; }
+  .card-footer button.demote { color: #64748b; }
+  .card-footer button.danger { color: var(--danger); flex: 0 0 auto; padding: 11px 14px; }
+  .card-footer button.danger:hover { background: #fef2f2; }
   .done-date { font-size: 11px; color: var(--done); font-weight: 500; }
   .empty { font-size: 12.5px; color: var(--muted); text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: 8px; }
 </style>
@@ -334,14 +359,45 @@ function makeCard(t, opts = {}) {
   card.className = 'card';
   card.dataset.id = t.id;
 
-  // Title — contenteditable
+  // Card-body wrapper (bevat alles behalve de footer met acties)
+  const body = document.createElement('div');
+  body.className = 'card-body';
+  card.appendChild(body);
+
+  // Head: title + status-pill
+  const head = document.createElement('div');
+  head.className = 'card-head';
+
   const titleEl = document.createElement('div');
   titleEl.className = 'card-title';
   titleEl.contentEditable = 'true';
   titleEl.setAttribute('data-placeholder', 'Taaknaam...');
   titleEl.textContent = t.title;
   ceField(titleEl, t.id, 'title', t.title);
-  card.appendChild(titleEl);
+  head.appendChild(titleEl);
+
+  // Status pill rechts van titel
+  const pill = document.createElement('span');
+  pill.className = 'status-pill';
+  if (t.status === 'done') {
+    pill.classList.add('status-done');
+    pill.textContent = 'Afgerond';
+  } else if (t.status === 'in_progress') {
+    pill.classList.add('status-bezig');
+    pill.textContent = 'Bezig';
+  } else if (t.dueDate) {
+    const todayPill = new Date(); todayPill.setHours(0,0,0,0);
+    const ddP = new Date(t.dueDate + 'T00:00:00');
+    const diffP = Math.floor((ddP - todayPill) / 86400000);
+    if (diffP < 0) { pill.classList.add('status-overdue'); pill.textContent = 'Overdue'; }
+    else if (diffP < 2) { pill.classList.add('status-urgent'); pill.textContent = diffP === 0 ? 'Vandaag' : 'Morgen'; }
+    else { pill.classList.add('status-open'); pill.textContent = 'Open'; }
+  } else {
+    pill.classList.add('status-open');
+    pill.textContent = 'Open';
+  }
+  head.appendChild(pill);
+  body.appendChild(head);
 
   // Meta tags — editable fields
   const meta = document.createElement('div');
@@ -521,17 +577,17 @@ function makeCard(t, opts = {}) {
   }
   meta.appendChild(dueWrap);
 
-  card.appendChild(meta);
+  body.appendChild(meta);
 
-  // Done date
+  // Done date (alleen subtiele indicator; status staat al in de pill)
   if (t.status === 'done' && t.completedAt) {
     const d = document.createElement('div');
     d.className = 'done-date';
-    d.textContent = 'Afgerond ' + fmtDate(t.completedAt);
-    card.appendChild(d);
+    d.textContent = 'Afgerond op ' + fmtDate(t.completedAt);
+    body.appendChild(d);
   }
 
-  // Notes — each note text is contenteditable, with delete button
+  // Notes — timeline met dot per item
   if (t.notes?.length) {
     const notesWrap = document.createElement('div');
     notesWrap.className = 'notes';
@@ -542,17 +598,20 @@ function makeCard(t, opts = {}) {
         row.classList.add('saved-flash');
       }
 
-      const dateSpan = document.createElement('span');
-      dateSpan.className = 'note-date';
-      dateSpan.textContent = fmtDate(n.timestamp) + ' —';
-      row.appendChild(dateSpan);
+      // Dot-marker links
+      const dot = document.createElement('div');
+      dot.className = 'note-dot';
+      row.appendChild(dot);
+
+      // Body: tekst + datum rechts
+      const noteBody = document.createElement('div');
+      noteBody.className = 'note-body';
 
       const textEl = document.createElement('span');
       textEl.className = 'note-text';
       textEl.contentEditable = 'true';
       textEl.setAttribute('data-placeholder', 'Notitie...');
       textEl.textContent = n.text;
-      // notes use index-based patch
       textEl.dataset.original = n.text;
       textEl.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); textEl.blur(); }
@@ -564,7 +623,12 @@ function makeCard(t, opts = {}) {
         if (val === textEl.dataset.original) return;
         api('PATCH', '/api/todos/' + t.id, { noteIndex: idx, noteText: val });
       });
-      row.appendChild(textEl);
+      noteBody.appendChild(textEl);
+
+      const dateSpan = document.createElement('time');
+      dateSpan.className = 'note-date';
+      dateSpan.textContent = fmtDate(n.timestamp);
+      noteBody.appendChild(dateSpan);
 
       if (!n.text.trim()) {
         const delBtn = document.createElement('span');
@@ -572,33 +636,39 @@ function makeCard(t, opts = {}) {
         delBtn.textContent = '×';
         delBtn.title = 'Verwijder lege notitie';
         delBtn.onclick = () => deleteNote(t.id, idx);
-        row.appendChild(delBtn);
+        noteBody.appendChild(delBtn);
       }
 
+      row.appendChild(noteBody);
       notesWrap.appendChild(row);
     });
-    card.appendChild(notesWrap);
+    body.appendChild(notesWrap);
   }
 
-  // Add note input — waarde bewaard in noteDrafts zodat re-renders niets wissen
-  const noteRow = document.createElement('div');
-  noteRow.className = 'add-note-row';
-  const noteInp = document.createElement('input');
+  // Add-note form: textarea met knop rechtsonder
+  const addForm = document.createElement('div');
+  addForm.className = 'add-note-form';
+  const noteInp = document.createElement('textarea');
+  noteInp.rows = 2;
   noteInp.placeholder = 'Notitie toevoegen...';
   noteInp.value = noteDrafts[t.id] || '';
   noteInp.addEventListener('input', () => { noteDrafts[t.id] = noteInp.value; });
-  noteInp.addEventListener('keydown', e => { if (e.key === 'Enter') addNote(t.id, noteInp); });
+  noteInp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(t.id, noteInp); }
+  });
   const noteBtn = document.createElement('button');
-  noteBtn.textContent = '+';
-  noteBtn.title = 'Notitie toevoegen';
+  noteBtn.type = 'button';
+  noteBtn.className = 'add-note-submit';
+  noteBtn.textContent = 'Voeg toe';
+  noteBtn.title = 'Notitie toevoegen (of Enter)';
   noteBtn.onclick = () => addNote(t.id, noteInp);
-  noteRow.appendChild(noteInp);
-  noteRow.appendChild(noteBtn);
-  card.appendChild(noteRow);
+  addForm.appendChild(noteInp);
+  addForm.appendChild(noteBtn);
+  body.appendChild(addForm);
 
-  // Action buttons
+  // Action buttons (footer buiten body)
   const actions = document.createElement('div');
-  actions.className = 'card-actions';
+  actions.className = 'card-footer';
   if (opts.canPromote) {
     const btn = document.createElement('button');
     btn.className = 'promote';
