@@ -68,8 +68,12 @@ const HTML = `<!DOCTYPE html>
   .col-open  .col-header h2 { color: var(--open); }
   .col-done  .col-header h2 { color: var(--done); }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; transition: box-shadow 0.1s; }
-  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; transition: box-shadow 0.1s, opacity 0.15s; opacity: 0.55; }
+  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); opacity: 1; }
+  .card.hot { opacity: 1; border-color: #cbd5e1; box-shadow: 0 1px 3px rgba(29,78,216,0.08); }
+  .card.hot:hover { box-shadow: 0 4px 12px rgba(29,78,216,0.12); }
+  .card.dimmed { opacity: 0.45; }
+  .card.dimmed:hover { opacity: 0.85; }
 
   /* contenteditable shared style */
   [contenteditable] { outline: none; border-radius: 3px; }
@@ -105,6 +109,15 @@ const HTML = `<!DOCTYPE html>
   .due-empty input[type=date] { width: 0; padding: 0; opacity: 0; position: absolute; pointer-events: none; }
   .cal-icon { font-size: 12px; line-height: 1; cursor: pointer; opacity: 0.65; }
   .due-empty:hover .cal-icon { opacity: 1; }
+
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: var(--surface); border-radius: 10px; padding: 20px 22px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 420px; width: 90%; }
+  .modal h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--muted); margin-bottom: 14px; word-break: break-word; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-actions button { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); }
+  .modal-actions button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .modal-actions button.danger:hover { background: #b91c1c; }
 
   .notes { border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 5px; }
   .note-row { display: flex; align-items: flex-start; gap: 6px; }
@@ -216,7 +229,46 @@ async function saveNew() {
 }
 
 async function setStatus(id, status) { await api('PATCH', '/api/todos/' + id, { status }); }
-async function deleteTask(id) { await api('DELETE', '/api/todos/' + id); }
+
+function confirmDelete(task) {
+  return new Promise(resolve => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = \`
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3>Taak verwijderen?</h3>
+        <p></p>
+        <div class="modal-actions">
+          <button class="cancel">Annuleer</button>
+          <button class="danger">Verwijder</button>
+        </div>
+      </div>\`;
+    backdrop.querySelector('p').textContent = task.title;
+    const close = (ok) => {
+      backdrop.remove();
+      document.removeEventListener('keydown', onKey);
+      resolve(ok);
+    };
+    const onKey = e => {
+      if (e.key === 'Escape') close(false);
+      if (e.key === 'Enter') close(true);
+    };
+    backdrop.querySelector('.cancel').onclick = () => close(false);
+    backdrop.querySelector('.danger').onclick = () => close(true);
+    backdrop.onclick = e => { if (e.target === backdrop) close(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(backdrop);
+    backdrop.querySelector('.danger').focus();
+  });
+}
+
+async function deleteTask(id) {
+  const task = todos.find(t => t.id === id);
+  if (!task) return;
+  const ok = await confirmDelete(task);
+  if (!ok) return;
+  await api('DELETE', '/api/todos/' + id);
+}
 
 async function addNote(id, inputEl) {
   const text = inputEl.value.trim();
@@ -518,30 +570,59 @@ function makeCard(t, opts = {}) {
   return card;
 }
 
+// Sort: earlier deadlines first; tasks without deadline go to bottom
+function byDueDate(a, b) {
+  const da = a.dueDate || '';
+  const db = b.dueDate || '';
+  if (!da && !db) return 0;
+  if (!da) return 1;
+  if (!db) return -1;
+  return da.localeCompare(db);
+}
+
+function urgencyClass(t, col) {
+  if (col === 'done') return 'dimmed';
+  if (col === 'bezig') return 'hot';
+  // Open: hot if deadline vandaag/morgen/verstreken (< overmorgen)
+  if (col === 'open' && t.dueDate) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dd = new Date(t.dueDate + 'T00:00:00');
+    const diffDays = Math.floor((dd - today) / 86400000);
+    if (diffDays < 2) return 'hot';
+  }
+  return '';  // normaal gedimmed (default .card opacity)
+}
+
 function render() {
   const cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-  const bezig = todos.filter(t => t.status === 'in_progress');
-  const open  = todos.filter(t => t.status === 'pending');
-  const done  = todos.filter(t => t.status === 'done' && (t.completedAt || '') > cutoff);
+  const bezig = todos.filter(t => t.status === 'in_progress').sort(byDueDate);
+  const open  = todos.filter(t => t.status === 'pending').sort(byDueDate);
+  const done  = todos.filter(t => t.status === 'done' && (t.completedAt || '') > cutoff)
+    .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
 
   document.getElementById('cnt-bezig').textContent = bezig.length;
   document.getElementById('cnt-open').textContent  = open.length;
   document.getElementById('cnt-done').textContent  = done.length;
   document.getElementById('count').textContent = (bezig.length + open.length) + ' actief';
 
-  function fill(colId, items, opts) {
+  function fill(colId, items, opts, colKey) {
     const col = document.getElementById(colId);
-    // preserve focus only for contenteditable fields (not regular inputs like notitie)
     const ae = document.activeElement;
     const focusedCard = ae?.isContentEditable ? ae.closest('.card') : null;
     const focusedId = focusedCard?.dataset.id;
     col.innerHTML = '';
     items.forEach(t => {
+      let card;
       if (t.id === focusedId) {
-        col.appendChild(focusedCard);
+        card = focusedCard;
       } else {
-        col.appendChild(makeCard(t, opts));
+        card = makeCard(t, opts);
       }
+      // Reset en zet urgency-class
+      card.classList.remove('hot', 'dimmed');
+      const uc = urgencyClass(t, colKey);
+      if (uc) card.classList.add(uc);
+      col.appendChild(card);
     });
     if (!items.length) {
       const e = document.createElement('div');
@@ -554,13 +635,13 @@ function render() {
   fill('col-bezig', bezig, {
     canPromote: true, promoteLabel: 'Afronden',          promoteStatus: 'done',
     canDemote:  true, demoteLabel:  'Terug naar open',   demoteStatus:  'pending',
-  });
+  }, 'bezig');
   fill('col-open', open, {
     canPromote: true, promoteLabel: 'Op bezig zetten',   promoteStatus: 'in_progress',
-  });
+  }, 'open');
   fill('col-done', done, {
     canDemote:  true, demoteLabel:  'Heropenen',         demoteStatus:  'pending',
-  });
+  }, 'done');
 }
 
 load();
