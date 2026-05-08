@@ -47,8 +47,21 @@ const HTML = `<!DOCTYPE html>
   @media (min-width: 640px) { header { padding: 14px 24px; gap: 16px; } }
   header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
   header .count { font-size: 12px; color: var(--muted); }
-  header button.add-btn { margin-left: auto; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  header button.add-btn { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
   header button.add-btn:hover { background: var(--accent-hover); }
+
+  /* Search — gecentreerd in topbar met icon, shrinkbaar */
+  .search-wrap { position: relative; flex: 1; max-width: 480px; margin: 0 auto; display: flex; align-items: center; }
+  .search-wrap svg { position: absolute; left: 10px; width: 16px; height: 16px; color: #94a3b8; pointer-events: none; }
+  .search-wrap input { width: 100%; padding: 7px 34px 7px 32px; font: inherit; font-size: 13px; color: #0f172a; background: var(--bg); border-radius: 8px; border: none; box-shadow: inset 0 0 0 1px #cbd5e1; outline: none; transition: box-shadow 0.12s; }
+  .search-wrap input::placeholder { color: #94a3b8; }
+  .search-wrap input:focus { box-shadow: inset 0 0 0 2px var(--accent); background: var(--surface); }
+  .search-wrap .search-clear { position: absolute; right: 6px; background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 16px; line-height: 1; padding: 4px; border-radius: 4px; display: none; }
+  .search-wrap .search-clear:hover { color: var(--danger); background: #fef2f2; }
+  .search-wrap.has-value .search-clear { display: block; }
+  @media (max-width: 640px) {
+    .search-wrap { order: 3; flex-basis: 100%; max-width: none; margin: 0; }
+  }
 
   .add-form { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: none; gap: 8px; flex-wrap: wrap; }
   @media (min-width: 640px) { .add-form { padding: 12px 24px; flex-wrap: nowrap; } }
@@ -256,6 +269,13 @@ const HTML = `<!DOCTYPE html>
 <header>
   <h1>Todo</h1>
   <span class="count" id="count"></span>
+  <div class="search-wrap" id="searchWrap">
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clip-rule="evenodd" fill-rule="evenodd" />
+    </svg>
+    <input id="searchInput" type="search" placeholder="Zoek in titel, notitie, branch..." aria-label="Zoek taken" autocomplete="off" />
+    <button class="search-clear" id="searchClear" aria-label="Wis zoekopdracht" type="button">×</button>
+  </div>
   <button class="add-btn" onclick="toggleForm()">+ Nieuwe taak</button>
 </header>
 <div class="add-form" id="addForm">
@@ -291,6 +311,18 @@ let todos = [];
 const noteDrafts = {};
 // { taskId, noteIndex } — de notitie die zojuist gesaved werd (voor animation)
 let justSavedNote = null;
+// Zoekterm — persisteert over re-renders
+let searchQuery = '';
+
+function matchesSearch(task) {
+  if (!searchQuery) return true;
+  const q = searchQuery.toLowerCase();
+  const fields = [
+    task.title, task.sessionTitle, task.gitBranch, task.planSlug,
+    ...(task.notes || []).map(n => n.text),
+  ];
+  return fields.some(f => f && f.toLowerCase().includes(q));
+}
 
 async function load(skipRender) {
   const r = await fetch('/api/todos');
@@ -836,9 +868,9 @@ function urgencyClass(t, col) {
 
 function render() {
   const cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-  const bezig = todos.filter(t => t.status === 'in_progress').sort(byDueDate);
-  const open  = todos.filter(t => t.status === 'pending').sort(byDueDate);
-  const done  = todos.filter(t => t.status === 'done' && (t.completedAt || '') > cutoff)
+  const bezig = todos.filter(t => t.status === 'in_progress' && matchesSearch(t)).sort(byDueDate);
+  const open  = todos.filter(t => t.status === 'pending' && matchesSearch(t)).sort(byDueDate);
+  const done  = todos.filter(t => t.status === 'done' && (t.completedAt || '') > cutoff && matchesSearch(t))
     .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
 
   document.getElementById('cnt-bezig').textContent = bezig.length;
@@ -916,13 +948,44 @@ function render() {
   });
 })();
 
+// Search — live filter. Bij actieve zoekopdracht klappen alle kolommen open.
+(function initSearch() {
+  const input = document.getElementById('searchInput');
+  const wrap = document.getElementById('searchWrap');
+  const clear = document.getElementById('searchClear');
+  const onChange = () => {
+    searchQuery = input.value.trim();
+    wrap.classList.toggle('has-value', !!searchQuery);
+    if (searchQuery) {
+      // Forceer alle kolommen open zodat matches in Afgerond zichtbaar zijn
+      document.querySelectorAll('.col').forEach(c => c.classList.remove('collapsed'));
+    } else {
+      // Terug naar opgeslagen voorkeur
+      document.querySelectorAll('.col').forEach(col => {
+        const key = 'todo-col-' + col.dataset.col + '-collapsed';
+        const stored = localStorage.getItem(key);
+        const isCollapsed = stored === null ? col.dataset.col === 'done' : stored === '1';
+        col.classList.toggle('collapsed', isCollapsed);
+      });
+    }
+    render();
+  };
+  input.addEventListener('input', onChange);
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') { input.value = ''; onChange(); input.blur(); } });
+  clear.addEventListener('click', () => { input.value = ''; onChange(); input.focus(); });
+  // Cmd/Ctrl+K focus het zoekveld
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); input.focus(); input.select(); }
+  });
+})();
+
 load();
 // Pauzeer auto-refresh zolang gebruiker in een veld staat te typen (binnen kaart of add-form)
 setInterval(() => {
   const ae = document.activeElement;
   if (!ae || ae === document.body) return load();
   const tag = ae.tagName;
-  const typingInCard = ae.closest && (ae.closest('.card') || ae.closest('.add-form'));
+  const typingInCard = ae.closest && (ae.closest('.card') || ae.closest('.add-form') || ae.closest('.search-wrap'));
   if ((tag === 'INPUT' || tag === 'TEXTAREA' || ae.isContentEditable) && typingInCard) return;
   load();
 }, 10000);
