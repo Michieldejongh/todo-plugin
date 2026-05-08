@@ -277,7 +277,27 @@ async function addNote(id, inputEl) {
   if (!text) return;
   inputEl.value = '';
   delete noteDrafts[id];
-  await api('PATCH', '/api/todos/' + id, { note: text });
+
+  // Optimistic update: toon de notitie direct
+  const task = todos.find(t => t.id === id);
+  if (task) {
+    task.notes = task.notes || [];
+    task.notes.push({ timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), text });
+    render();
+  }
+
+  // Sync met server op de achtergrond
+  try {
+    const r = await fetch('/api/todos/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: text }),
+    });
+    if (r.ok) {
+      todos = await r.json();
+      render();
+    }
+  } catch {}
 }
 
 async function deleteNote(id, idx) {
