@@ -175,11 +175,36 @@ const HTML = `<!DOCTYPE html>
   .note-del:hover { background: #fef2f2; }
 
   /* Add-note form — textarea met inset-ring en focus-ring, knop rechtsonder */
+  /* Add-note form — compact single-line; klappt uit bij focus */
   .add-note-form { position: relative; margin-top: 6px; }
-  .add-note-form textarea { display: block; width: 100%; resize: none; background: transparent; padding: 8px 12px 36px; font: inherit; font-size: 13px; color: #0f172a; border-radius: 8px; border: none; box-shadow: inset 0 0 0 1px #cbd5e1; outline: none; transition: box-shadow 0.12s; line-height: 1.5; min-height: 34px; }
+  .add-note-form textarea {
+    display: block; width: 100%; resize: none;
+    background: transparent; color: #0f172a;
+    padding: 7px 12px; font: inherit; font-size: 13px; line-height: 1.5;
+    border: none; border-radius: 8px;
+    box-shadow: inset 0 0 0 1px #cbd5e1; outline: none;
+    height: 34px; transition: box-shadow 0.12s, height 0.15s, padding 0.15s;
+    overflow: hidden;
+  }
   .add-note-form textarea::placeholder { color: #94a3b8; }
-  .add-note-form textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
-  .add-note-form .add-note-submit { position: absolute; right: 6px; bottom: 6px; border-radius: 6px; background: var(--surface); color: #0f172a; font-size: 12px; font-weight: 600; padding: 4px 10px; box-shadow: inset 0 0 0 1px #cbd5e1; cursor: pointer; border: none; }
+  .add-note-form.expanded textarea,
+  .add-note-form textarea:focus {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    height: 72px;
+    padding-bottom: 34px;
+    overflow: auto;
+  }
+  .add-note-form .add-note-submit {
+    position: absolute; right: 6px; bottom: 6px;
+    border-radius: 6px; background: var(--surface); color: #0f172a;
+    font-size: 12px; font-weight: 600; padding: 4px 10px;
+    box-shadow: inset 0 0 0 1px #cbd5e1; cursor: pointer; border: none;
+    opacity: 0; transform: translateY(4px); pointer-events: none;
+    transition: opacity 0.12s, transform 0.12s;
+  }
+  .add-note-form.expanded .add-note-submit {
+    opacity: 1; transform: translateY(0); pointer-events: auto;
+  }
   .add-note-form .add-note-submit:hover { background: #f8fafc; }
 
   /* Card footer — compacte divided action bar */
@@ -667,22 +692,31 @@ function makeCard(t, opts = {}) {
     body.appendChild(notesWrap);
   }
 
-  // Add-note form: textarea met knop rechtsonder
+  // Add-note form: compact single-line, klapt uit bij klik/focus
   const addForm = document.createElement('div');
   addForm.className = 'add-note-form';
   const noteInp = document.createElement('textarea');
-  noteInp.rows = 2;
+  noteInp.rows = 1;
   noteInp.placeholder = 'Notitie toevoegen...';
   noteInp.value = noteDrafts[t.id] || '';
+  // Start uitgeklapt als er al draft-tekst is
+  if (noteDrafts[t.id]) addForm.classList.add('expanded');
+  noteInp.addEventListener('focus', () => addForm.classList.add('expanded'));
+  noteInp.addEventListener('blur', () => {
+    if (!noteInp.value.trim()) addForm.classList.remove('expanded');
+  });
   noteInp.addEventListener('input', () => { noteDrafts[t.id] = noteInp.value; });
   noteInp.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(t.id, noteInp); }
+    if (e.key === 'Escape') { noteInp.blur(); }
   });
   const noteBtn = document.createElement('button');
   noteBtn.type = 'button';
   noteBtn.className = 'add-note-submit';
   noteBtn.textContent = 'Voeg toe';
   noteBtn.title = 'Notitie toevoegen (of Enter)';
+  // mousedown voorkomt dat textarea blur voordat de klik verwerkt is
+  noteBtn.addEventListener('mousedown', e => e.preventDefault());
   noteBtn.onclick = () => addNote(t.id, noteInp);
   addForm.appendChild(noteInp);
   addForm.appendChild(noteBtn);
