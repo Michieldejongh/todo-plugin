@@ -607,8 +607,10 @@ function render() {
 
   function fill(colId, items, opts, colKey) {
     const col = document.getElementById(colId);
+    // Preserve kaart als EENIG element focus heeft binnen de kaart
+    // (contenteditable, <input> voor notities, <input type=date>, etc.)
     const ae = document.activeElement;
-    const focusedCard = ae?.isContentEditable ? ae.closest('.card') : null;
+    const focusedCard = ae && ae !== document.body ? ae.closest('.card') : null;
     const focusedId = focusedCard?.dataset.id;
     col.innerHTML = '';
     items.forEach(t => {
@@ -645,7 +647,15 @@ function render() {
 }
 
 load();
-setInterval(() => { if (!document.activeElement?.isContentEditable) load(); }, 10000);
+// Pauzeer auto-refresh zolang gebruiker in een veld staat te typen (binnen kaart of add-form)
+setInterval(() => {
+  const ae = document.activeElement;
+  if (!ae || ae === document.body) return load();
+  const tag = ae.tagName;
+  const typingInCard = ae.closest && (ae.closest('.card') || ae.closest('.add-form'));
+  if ((tag === 'INPUT' || tag === 'TEXTAREA' || ae.isContentEditable) && typingInCard) return;
+  load();
+}, 10000);
 </script>
 </body>
 </html>`;
