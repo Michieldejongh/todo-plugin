@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+[[ $# -lt 1 ]] && { echo "Gebruik: todo-note <id> [tekst]" >&2; exit 1; }
+ID=$1; shift
+TEXT=$*
+if [[ -z "$TEXT" ]]; then
+  read -p "Notitie: " TEXT
+  [[ -z "$TEXT" ]] && { echo "Geannuleerd."; exit 0; }
+fi
+exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js note "$ID" "$TEXT"

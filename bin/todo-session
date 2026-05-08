@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+CWD=$(pwd)
+CWD_SLUG=$(echo "$CWD" | tr '/' '-')
+SESSION=$(ls -t ~/.claude/projects/${CWD_SLUG}/*.jsonl 2>/dev/null | head -1 | xargs -I{} basename {} .jsonl 2>/dev/null)
+if [[ -z "$SESSION" ]]; then
+  echo "Geen sessie gevonden voor $CWD" >&2
+  exit 1
+fi
+
+PREP=$(node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js session-prepare "$SESSION" --branch "$BRANCH")
+
+EXISTING=$(echo "$PREP" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); if(d.existing.length){console.log(d.existing[0].id+' — '+d.existing[0].title);}")
+if [[ -n "$EXISTING" ]]; then
+  echo "Taak bestaat al voor deze sessie: $EXISTING"
+  exit 0
+fi
+
+AUTO_TITLE=$(echo "$PREP" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.autoTitle);")
+PLAN=$(echo "$PREP" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.plans[0]||'');")
+
+if [[ -n "$1" ]]; then
+  TITLE="$*"
+else
+  echo "Voorgestelde titel: $AUTO_TITLE"
+  read -p "Gebruik (enter) of typ alternatief: " INPUT
+  TITLE="${INPUT:-$AUTO_TITLE}"
+fi
+
+exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js session-add "$TITLE" --session "$SESSION" --branch "$BRANCH" --cwd "$CWD" --plan "$PLAN"

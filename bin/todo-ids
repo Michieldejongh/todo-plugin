@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js ids --branch "$BRANCH"

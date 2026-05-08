@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+[[ $# -lt 2 ]] && { echo "Gebruik: todo-edit <id> <nieuwe titel>" >&2; exit 1; }
+ID=$1; shift
+exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js edit "$ID" "$*"

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+[[ $# -lt 1 ]] && { echo "Gebruik: todo-rm <id> [--force]" >&2; exit 1; }
+OUTPUT=$(node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js rm "$@" 2>&1)
+CODE=$?
+echo "$OUTPUT"
+if [[ $CODE -eq 2 && "$OUTPUT" == CONFIRM_NEEDED* ]]; then
+  read -p "Actieve taak verwijderen? (y/N): " ANS
+  if [[ "$ANS" == "y" || "$ANS" == "Y" ]]; then
+    exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js rm "$1" --force
+  fi
+  echo "Geannuleerd."
+fi
+exit $CODE

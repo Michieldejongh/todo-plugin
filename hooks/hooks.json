@@ -1,0 +1,8 @@
+{
+  "SessionStart": [{
+    "hooks": [{
+      "type": "command",
+      "command": "bash ${CLAUDE_PLUGIN_ROOT}/install-bin.sh"
+    }]
+  }]
+}

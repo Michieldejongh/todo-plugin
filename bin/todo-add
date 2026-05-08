@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+if [[ $# -eq 0 ]]; then
+  echo "Gebruik: todo-add <titel> [--due YYYY-MM-DD]" >&2
+  exit 1
+fi
+BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+CWD=$(pwd)
+CWD_SLUG=$(echo "$CWD" | tr '/' '-')
+SESSION=$(ls -t ~/.claude/projects/${CWD_SLUG}/*.jsonl 2>/dev/null | head -1 | xargs -I{} basename {} .jsonl 2>/dev/null)
+exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js add "$@" --session "$SESSION" --branch "$BRANCH" --cwd "$CWD" --auto-plan

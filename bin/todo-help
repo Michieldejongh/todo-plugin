@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js help

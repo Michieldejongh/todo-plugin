@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Check of server al draait
+if lsof -ti :3737 >/dev/null 2>&1; then
+  echo "UI draait al op http://localhost:3737"
+  command -v open >/dev/null && open http://localhost:3737
+  exit 0
+fi
+nohup node ${CLAUDE_PLUGIN_ROOT}/scripts/todo-server.js >/dev/null 2>&1 &
+sleep 0.5
+echo "UI gestart op http://localhost:3737"

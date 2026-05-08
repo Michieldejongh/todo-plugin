@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+CWD=$(pwd)
+CWD_SLUG=$(echo "$CWD" | tr '/' '-')
+SESSION=$(ls -t ~/.claude/projects/${CWD_SLUG}/*.jsonl 2>/dev/null | head -1 | xargs -I{} basename {} .jsonl 2>/dev/null)
+BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+
+OUTPUT=$(node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js session-done --session "$SESSION" 2>&1)
+CODE=$?
+if [[ $CODE -eq 0 ]]; then
+  echo "$OUTPUT"
+  exit 0
+fi
+
+if [[ "$OUTPUT" == "NOT_FOUND" ]]; then
+  read -p "Geen taak voor sessie. Aanmaken als afgerond? Titel (leeg = annuleer): " TITLE
+  [[ -z "$TITLE" ]] && { echo "Geannuleerd."; exit 0; }
+  exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js session-done --session "$SESSION" --branch "$BRANCH" --cwd "$CWD" --title "$TITLE"
+fi
+
+echo "$OUTPUT"
+exit $CODE

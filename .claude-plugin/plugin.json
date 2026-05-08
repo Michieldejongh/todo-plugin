@@ -1,0 +1,10 @@
+{
+  "name": "todo",
+  "version": "1.0.0",
+  "description": "Persistent to-do lijst over Claude Code sessies heen. Interactieve HTML UI, auto branch/plan/PR-koppeling, shell wrappers.",
+  "author": { "name": "Michiel de Jongh" },
+  "license": "MIT",
+  "keywords": ["todo", "task", "productivity", "session-tracking"],
+  "commands": "./commands",
+  "hooks": "./hooks/hooks.json"
+}

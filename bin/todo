@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Default: toon overzicht
+BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+exec node ${CLAUDE_PLUGIN_ROOT}/scripts/todo.js list --branch "$BRANCH"
