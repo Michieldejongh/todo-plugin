@@ -177,6 +177,8 @@ function fmtDate(iso) {
 }
 
 let todos = [];
+// Concept-tekst per taak voor het "notitie toevoegen" veld — overleeft re-renders
+const noteDrafts = {};
 
 async function load(skipRender) {
   const r = await fetch('/api/todos');
@@ -274,6 +276,7 @@ async function addNote(id, inputEl) {
   const text = inputEl.value.trim();
   if (!text) return;
   inputEl.value = '';
+  delete noteDrafts[id];
   await api('PATCH', '/api/todos/' + id, { note: text });
 }
 
@@ -529,11 +532,13 @@ function makeCard(t, opts = {}) {
     card.appendChild(notesWrap);
   }
 
-  // Add note input
+  // Add note input — waarde bewaard in noteDrafts zodat re-renders niets wissen
   const noteRow = document.createElement('div');
   noteRow.className = 'add-note-row';
   const noteInp = document.createElement('input');
   noteInp.placeholder = 'Notitie toevoegen...';
+  noteInp.value = noteDrafts[t.id] || '';
+  noteInp.addEventListener('input', () => { noteDrafts[t.id] = noteInp.value; });
   noteInp.addEventListener('keydown', e => { if (e.key === 'Enter') addNote(t.id, noteInp); });
   const noteBtn = document.createElement('button');
   noteBtn.textContent = '+';
