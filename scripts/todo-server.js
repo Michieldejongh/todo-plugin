@@ -61,9 +61,13 @@ const HTML = `<!DOCTYPE html>
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
 
   .col { display: flex; flex-direction: column; gap: 8px; }
-  .col-header { display: flex; align-items: center; gap: 8px; padding: 0 2px 4px; }
-  .col-header h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .col-header { display: flex; align-items: center; gap: 8px; padding: 0 2px 4px; cursor: pointer; user-select: none; }
+  .col-header:hover h2 { opacity: 0.7; }
+  .col-header h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; flex: 1; }
   .col-header .badge { font-size: 11px; background: var(--border); border-radius: 99px; padding: 1px 7px; color: var(--muted); font-weight: 500; }
+  .col-header .caret { font-size: 10px; color: var(--muted); transition: transform 0.15s; }
+  .col.collapsed .caret { transform: rotate(-90deg); }
+  .col.collapsed .col-body { display: none; }
   .col-bezig .col-header h2 { color: var(--bezig); }
   .col-open  .col-header h2 { color: var(--open); }
   .col-done  .col-header h2 { color: var(--done); }
@@ -161,17 +165,17 @@ const HTML = `<!DOCTYPE html>
   <button onclick="toggleForm()">Annuleer</button>
 </div>
 <main>
-  <div class="col col-open">
-    <div class="col-header"><h2>Open</h2><span class="badge" id="cnt-open">0</span></div>
-    <div id="col-open"></div>
+  <div class="col col-open" data-col="open">
+    <div class="col-header"><h2>Open</h2><span class="badge" id="cnt-open">0</span><span class="caret">▼</span></div>
+    <div class="col-body" id="col-open"></div>
   </div>
-  <div class="col col-bezig">
-    <div class="col-header"><h2>Bezig</h2><span class="badge" id="cnt-bezig">0</span></div>
-    <div id="col-bezig"></div>
+  <div class="col col-bezig" data-col="bezig">
+    <div class="col-header"><h2>Bezig</h2><span class="badge" id="cnt-bezig">0</span><span class="caret">▼</span></div>
+    <div class="col-body" id="col-bezig"></div>
   </div>
-  <div class="col col-done">
-    <div class="col-header"><h2>Afgerond (7d)</h2><span class="badge" id="cnt-done">0</span></div>
-    <div id="col-done"></div>
+  <div class="col col-done" data-col="done">
+    <div class="col-header"><h2>Afgerond (7d)</h2><span class="badge" id="cnt-done">0</span><span class="caret">▼</span></div>
+    <div class="col-body" id="col-done"></div>
   </div>
 </main>
 <script>
@@ -694,6 +698,21 @@ function render() {
     canDemote:  true, demoteLabel:  'Heropenen',         demoteStatus:  'pending',
   }, 'done');
 }
+
+// Init collapsible columns. Default: done-kolom dicht.
+(function initCollapse() {
+  document.querySelectorAll('.col').forEach(col => {
+    const key = 'todo-col-' + col.dataset.col + '-collapsed';
+    const stored = localStorage.getItem(key);
+    const isCollapsed = stored === null ? col.dataset.col === 'done' : stored === '1';
+    col.classList.toggle('collapsed', isCollapsed);
+    col.querySelector('.col-header').addEventListener('click', () => {
+      const nowCollapsed = !col.classList.contains('collapsed');
+      col.classList.toggle('collapsed', nowCollapsed);
+      localStorage.setItem(key, nowCollapsed ? '1' : '0');
+    });
+  });
+})();
 
 load();
 // Pauzeer auto-refresh zolang gebruiker in een veld staat te typen (binnen kaart of add-form)
