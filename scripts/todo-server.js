@@ -78,7 +78,7 @@ const HTML = `<!DOCTYPE html>
   .col-body { display: flex; flex-direction: column; gap: 12px; }
   .col-header { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #e5e7eb; cursor: pointer; user-select: none; transition: border-color 0.15s; }
   .col-header:hover { border-color: #cbd5e1; }
-  .col-header h2 { font-size: 15px; font-weight: 600; color: #0f172a; flex: 1; letter-spacing: -0.01em; }
+  .col-header h2 { font-size: 15px; font-weight: 600; color: #0f172a; letter-spacing: -0.01em; }
   .col-header .badge {
     display: inline-flex; align-items: center;
     font-size: 11px; font-weight: 600;
@@ -87,7 +87,7 @@ const HTML = `<!DOCTYPE html>
     box-shadow: inset 0 0 0 1px rgba(71,85,105,0.14);
     line-height: 1.3;
   }
-  .col-header .caret { font-size: 11px; color: #94a3b8; transition: transform 0.15s; margin-left: 4px; }
+  .col-header .caret { font-size: 11px; color: #94a3b8; transition: transform 0.15s; margin-left: 2px; }
   .col.collapsed .col-header { border-bottom-color: transparent; }
   .col.collapsed .caret { transform: rotate(-90deg); }
   .col.collapsed .col-body { display: none; }
