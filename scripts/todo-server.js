@@ -60,7 +60,8 @@ const HTML = `<!DOCTYPE html>
   main { padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1200px; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
 
-  .col { display: flex; flex-direction: column; gap: 12px; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
+  .col-body { display: flex; flex-direction: column; gap: 12px; }
   .col-header { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #e5e7eb; cursor: pointer; user-select: none; transition: border-color 0.15s; }
   .col-header:hover { border-color: #cbd5e1; }
   .col-header h2 { font-size: 15px; font-weight: 600; color: #0f172a; flex: 1; letter-spacing: -0.01em; }
@@ -85,7 +86,7 @@ const HTML = `<!DOCTYPE html>
   .col-bezig .col-header .badge { background: #eff6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1px rgba(29,78,216,0.16); }
   .col-done  .col-header .badge { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px rgba(4,120,87,0.16); }
 
-  /* Card — Tailwind Plus-style divided container */
+  /* Card — Tailwind Plus divide-y container */
   .card { background: var(--surface); border-radius: 10px; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(15,23,42,0.05), 0 0 0 1px rgba(15,23,42,0.05); transition: box-shadow 0.15s, opacity 0.15s; opacity: 0.55; overflow: hidden; }
   .card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.08), 0 0 0 1px rgba(15,23,42,0.08); opacity: 1; }
   .card.hot { opacity: 1; box-shadow: 0 1px 3px rgba(29,78,216,0.10), 0 0 0 1px rgba(29,78,216,0.18); }
@@ -93,7 +94,11 @@ const HTML = `<!DOCTYPE html>
   .card.dimmed { opacity: 0.45; }
   .card.dimmed:hover { opacity: 0.85; }
 
-  .card-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  /* Drie secties: header (compact), body (ruim), footer (compact) — gescheiden door divide-y */
+  .card-header { padding: 12px 16px; }
+  .card-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card-footer { padding: 0; }
+  .card-section + .card-section { border-top: 1px solid #e5e7eb; }
 
   /* contenteditable shared style */
   [contenteditable] { outline: none; border-radius: 3px; }
@@ -177,15 +182,15 @@ const HTML = `<!DOCTYPE html>
   .add-note-form .add-note-submit { position: absolute; right: 6px; bottom: 6px; border-radius: 6px; background: var(--surface); color: #0f172a; font-size: 12px; font-weight: 600; padding: 4px 10px; box-shadow: inset 0 0 0 1px #cbd5e1; cursor: pointer; border: none; }
   .add-note-form .add-note-submit:hover { background: #f8fafc; }
 
-  /* Card footer — divided action bar, Tailwind Plus stijl */
-  .card-footer { display: flex; border-top: 1px solid #e2e8f0; }
-  .card-footer button { flex: 1; background: transparent; border: none; padding: 11px 8px; font-size: 12.5px; font-weight: 600; color: #0f172a; cursor: pointer; }
-  .card-footer button:not(:last-child) { border-right: 1px solid #e2e8f0; }
+  /* Card footer — compacte divided action bar */
+  .card-footer { display: flex; }
+  .card-footer button { flex: 1; background: transparent; border: none; padding: 10px 8px; font-size: 12.5px; font-weight: 600; color: #0f172a; cursor: pointer; }
+  .card-footer button:not(:last-child) { border-right: 1px solid #e5e7eb; }
   .card-footer button:hover { background: #f8fafc; }
   .card-footer button.promote { color: var(--accent); }
   .card-footer button.promote:hover { background: #eff6ff; }
   .card-footer button.demote { color: #64748b; }
-  .card-footer button.danger { color: var(--danger); flex: 0 0 auto; padding: 11px 14px; }
+  .card-footer button.danger { color: var(--danger); flex: 0 0 auto; padding: 10px 14px; }
   .card-footer button.danger:hover { background: #fef2f2; }
   .done-date { font-size: 11px; color: var(--done); font-weight: 500; }
   .empty { font-size: 12.5px; color: var(--muted); text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: 8px; }
@@ -372,12 +377,10 @@ function makeCard(t, opts = {}) {
   card.className = 'card';
   card.dataset.id = t.id;
 
-  // Card-body wrapper (bevat alles behalve de footer met acties)
-  const body = document.createElement('div');
-  body.className = 'card-body';
-  card.appendChild(body);
+  // Header-sectie (titel + pill) — compactere padding dan body
+  const header = document.createElement('div');
+  header.className = 'card-section card-header';
 
-  // Head: title + status-pill
   const head = document.createElement('div');
   head.className = 'card-head';
 
@@ -410,7 +413,13 @@ function makeCard(t, opts = {}) {
     pill.textContent = 'Open';
   }
   head.appendChild(pill);
-  body.appendChild(head);
+  header.appendChild(head);
+  card.appendChild(header);
+
+  // Body-sectie (meta-tags + notities + add-form)
+  const body = document.createElement('div');
+  body.className = 'card-section card-body';
+  card.appendChild(body);
 
   // Meta tags — editable fields
   const meta = document.createElement('div');
@@ -679,9 +688,9 @@ function makeCard(t, opts = {}) {
   addForm.appendChild(noteBtn);
   body.appendChild(addForm);
 
-  // Action buttons (footer buiten body)
+  // Action buttons (footer — eigen card-section voor divide-y lijn)
   const actions = document.createElement('div');
-  actions.className = 'card-footer';
+  actions.className = 'card-section card-footer';
   if (opts.canPromote) {
     const btn = document.createElement('button');
     btn.className = 'promote';
