@@ -80,7 +80,7 @@ const HTML = `<!DOCTYPE html>
   [contenteditable]:focus { box-shadow: 0 0 0 2px var(--edit-outline); background: #f8faff; }
   [contenteditable]:empty:before { content: attr(data-placeholder); color: var(--muted); pointer-events: none; }
 
-  .card-title { font-weight: 500; font-size: 13.5px; line-height: 1.4; word-break: break-word; padding: 1px 3px; cursor: text; }
+  .card-title { font-weight: 800; font-size: 13.5px; line-height: 1.4; word-break: break-word; padding: 1px 3px; cursor: text; }
 
   .card-meta { font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   .tag { background: var(--tag-bg); border-radius: 4px; padding: 1px 6px; white-space: nowrap; cursor: text; }
