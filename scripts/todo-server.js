@@ -119,6 +119,13 @@ const HTML = `<!DOCTYPE html>
   .modal-actions button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
   .modal-actions button.danger:hover { background: #b91c1c; }
 
+  @keyframes save-flash {
+    0%   { background: #d1fae5; box-shadow: 0 0 0 2px #10b981; }
+    60%  { background: #d1fae5; box-shadow: 0 0 0 2px #10b981; }
+    100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
+  }
+  .note-row.saved-flash { animation: save-flash 900ms ease-out; border-radius: 4px; }
+
   .notes { border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 5px; }
   .note-row { display: flex; align-items: flex-start; gap: 6px; }
   .note-date { font-size: 11px; color: var(--muted); opacity: 0.7; white-space: nowrap; padding-top: 1px; flex-shrink: 0; }
@@ -179,6 +186,8 @@ function fmtDate(iso) {
 let todos = [];
 // Concept-tekst per taak voor het "notitie toevoegen" veld — overleeft re-renders
 const noteDrafts = {};
+// { taskId, noteIndex } — de notitie die zojuist gesaved werd (voor animation)
+let justSavedNote = null;
 
 async function load(skipRender) {
   const r = await fetch('/api/todos');
@@ -286,7 +295,7 @@ async function addNote(id, inputEl) {
     render();
   }
 
-  // Sync met server op de achtergrond
+  // Sync met server op de achtergrond. Pas ná bevestiging: flash-animation.
   try {
     const r = await fetch('/api/todos/' + id, {
       method: 'PATCH',
@@ -295,7 +304,19 @@ async function addNote(id, inputEl) {
     });
     if (r.ok) {
       todos = await r.json();
-      render();
+      // Markeer laatste notitie van deze taak voor flash-animation
+      const savedTask = todos.find(t => t.id === id);
+      if (savedTask && savedTask.notes?.length) {
+        justSavedNote = { taskId: id, noteIndex: savedTask.notes.length - 1 };
+        render();
+        setTimeout(() => {
+          if (justSavedNote && justSavedNote.taskId === id) {
+            justSavedNote = null;
+          }
+        }, 1000);
+      } else {
+        render();
+      }
     }
   } catch {}
 }
@@ -513,6 +534,9 @@ function makeCard(t, opts = {}) {
     t.notes.forEach((n, idx) => {
       const row = document.createElement('div');
       row.className = 'note-row';
+      if (justSavedNote && justSavedNote.taskId === t.id && justSavedNote.noteIndex === idx) {
+        row.classList.add('saved-flash');
+      }
 
       const dateSpan = document.createElement('span');
       dateSpan.className = 'note-date';
