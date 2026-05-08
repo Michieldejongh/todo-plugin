@@ -56,6 +56,9 @@ const HTML = `<!DOCTYPE html>
   .search-wrap input { width: 100%; padding: 7px 34px 7px 32px; font: inherit; font-size: 13px; color: #0f172a; background: var(--bg); border-radius: 8px; border: none; box-shadow: inset 0 0 0 1px #cbd5e1; outline: none; transition: box-shadow 0.12s; }
   .search-wrap input::placeholder { color: #94a3b8; }
   .search-wrap input:focus { box-shadow: inset 0 0 0 2px var(--accent); background: var(--surface); }
+  /* Verberg browser-native clear-icon (Chrome/Safari) — eigen knop komt uit .search-clear */
+  .search-wrap input::-webkit-search-cancel-button,
+  .search-wrap input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
   .search-wrap .search-clear { position: absolute; right: 6px; background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 16px; line-height: 1; padding: 4px; border-radius: 4px; display: none; }
   .search-wrap .search-clear:hover { color: var(--danger); background: #fef2f2; }
   .search-wrap.has-value .search-clear { display: block; }
