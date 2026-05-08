@@ -226,19 +226,28 @@ const HTML = `<!DOCTYPE html>
   .add-note-form .add-note-submit:hover { background: #f8fafc; }
 
   /* Card footer — compacte divided action bar */
-  .card-footer { display: flex; }
-  .card-footer button { flex: 1; background: transparent; border: none; padding: 9px 6px; font-size: 12px; font-weight: 600; color: #0f172a; cursor: pointer; white-space: nowrap; }
+  .card-footer { display: flex; position: relative; }
+  .card-footer button { flex: 1; background: transparent; border: none; padding: 9px 6px; font-size: 12px; font-weight: 600; color: #0f172a; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
   .card-footer button:not(:last-child) { border-right: 1px solid #e5e7eb; }
   .card-footer button:hover { background: #f8fafc; }
+  .card-footer button .chev { color: #94a3b8; font-size: 14px; line-height: 1; font-weight: 400; }
   .card-footer button.promote { color: var(--accent); }
   .card-footer button.promote:hover { background: #eff6ff; }
+  .card-footer button.promote .chev { color: var(--accent); opacity: 0.7; }
   .card-footer button.demote { color: #64748b; }
-  .card-footer button.danger { color: var(--danger); flex: 0 0 auto; padding: 9px 12px; }
-  .card-footer button.danger:hover { background: #fef2f2; }
+  .card-footer button.kebab { flex: 0 0 auto; padding: 9px 12px; color: #64748b; font-size: 18px; line-height: 1; }
+  .card-footer button.kebab:hover { background: #f8fafc; color: #0f172a; }
   @media (min-width: 640px) {
     .card-footer button { padding: 10px 8px; font-size: 12.5px; }
-    .card-footer button.danger { padding: 10px 14px; }
+    .card-footer button.kebab { padding: 10px 14px; font-size: 18px; }
   }
+
+  /* Kebab menu popover */
+  .kebab-menu { position: absolute; right: 6px; bottom: calc(100% + 4px); background: var(--surface); border-radius: 8px; box-shadow: 0 8px 24px rgba(15,23,42,0.12), 0 0 0 1px rgba(15,23,42,0.08); padding: 4px; min-width: 150px; z-index: 20; }
+  .kebab-menu button { display: flex; width: 100%; align-items: center; gap: 8px; background: transparent; border: none; padding: 8px 10px; font-size: 13px; border-radius: 5px; cursor: pointer; color: #0f172a; text-align: left; }
+  .kebab-menu button:hover { background: #f8fafc; }
+  .kebab-menu button.danger { color: var(--danger); }
+  .kebab-menu button.danger:hover { background: #fef2f2; }
   .done-date { font-size: 11px; color: var(--done); font-weight: 500; }
   .empty { font-size: 12.5px; color: var(--muted); text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: 8px; }
 </style>
@@ -747,25 +756,56 @@ function makeCard(t, opts = {}) {
   // Action buttons (footer — eigen card-section voor divide-y lijn)
   const actions = document.createElement('div');
   actions.className = 'card-section card-footer';
-  if (opts.canPromote) {
+
+  function makeActionBtn({ label, chevLeft, chevRight, className, onClick }) {
     const btn = document.createElement('button');
-    btn.className = 'promote';
-    btn.textContent = opts.promoteLabel;
-    btn.onclick = () => setStatus(t.id, opts.promoteStatus);
-    actions.appendChild(btn);
+    if (className) btn.className = className;
+    if (chevLeft) {
+      const c = document.createElement('span');
+      c.className = 'chev'; c.textContent = '‹'; btn.appendChild(c);
+    }
+    const txt = document.createElement('span');
+    txt.textContent = label;
+    btn.appendChild(txt);
+    if (chevRight) {
+      const c = document.createElement('span');
+      c.className = 'chev'; c.textContent = '›'; btn.appendChild(c);
+    }
+    btn.onclick = onClick;
+    return btn;
   }
-  if (opts.canDemote) {
-    const btn = document.createElement('button');
-    btn.className = 'demote';
-    btn.textContent = opts.demoteLabel;
-    btn.onclick = () => setStatus(t.id, opts.demoteStatus);
-    actions.appendChild(btn);
-  }
-  const del = document.createElement('button');
-  del.className = 'danger';
-  del.textContent = 'Verwijder';
-  del.onclick = () => deleteTask(t.id);
-  actions.appendChild(del);
+
+  // opts.buttons = [{ label, chevLeft, chevRight, className, onClick }]
+  (opts.buttons || []).forEach(b => actions.appendChild(makeActionBtn(b)));
+
+  // Kebab altijd als laatste
+  const kebab = document.createElement('button');
+  kebab.className = 'kebab';
+  kebab.textContent = '⋯';
+  kebab.title = 'Meer acties';
+  kebab.onclick = (e) => {
+    e.stopPropagation();
+    // Toggle menu
+    const existing = actions.querySelector('.kebab-menu');
+    if (existing) { existing.remove(); return; }
+    const menu = document.createElement('div');
+    menu.className = 'kebab-menu';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'danger';
+    delBtn.textContent = 'Verwijderen';
+    delBtn.onclick = () => { menu.remove(); deleteTask(t.id); };
+    menu.appendChild(delBtn);
+    actions.appendChild(menu);
+    const close = (ev) => {
+      if (!menu.contains(ev.target) && ev.target !== kebab) {
+        menu.remove();
+        document.removeEventListener('click', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  };
+  actions.appendChild(kebab);
+
   card.appendChild(actions);
 
   return card;
@@ -835,15 +875,29 @@ function render() {
     }
   }
 
-  fill('col-bezig', bezig, {
-    canPromote: true, promoteLabel: 'Afronden',          promoteStatus: 'done',
-    canDemote:  true, demoteLabel:  'Terug naar open',   demoteStatus:  'pending',
-  }, 'bezig');
+  // Gemeenschappelijke knop-definities per kolom. Volgorde = linker→rechts in footer.
+  // (makeCard voegt de kebab automatisch als laatste toe.)
   fill('col-open', open, {
-    canPromote: true, promoteLabel: 'Op bezig zetten',   promoteStatus: 'in_progress',
+    buttons: [
+      { label: 'Op bezig zetten', chevRight: true, className: 'promote',
+        onClick: (ev) => { const card = ev?.currentTarget?.closest('.card'); setStatus(card?.dataset.id || '', 'in_progress'); } },
+    ],
   }, 'open');
+
+  fill('col-bezig', bezig, {
+    buttons: [
+      { label: 'Terug naar open', chevLeft: true, className: 'demote',
+        onClick: (ev) => { const card = ev?.currentTarget?.closest('.card'); setStatus(card?.dataset.id || '', 'pending'); } },
+      { label: 'Afronden', chevRight: true, className: 'promote',
+        onClick: (ev) => { const card = ev?.currentTarget?.closest('.card'); setStatus(card?.dataset.id || '', 'done'); } },
+    ],
+  }, 'bezig');
+
   fill('col-done', done, {
-    canDemote:  true, demoteLabel:  'Heropenen',         demoteStatus:  'pending',
+    buttons: [
+      { label: 'Heropenen', chevLeft: true, className: 'demote',
+        onClick: (ev) => { const card = ev?.currentTarget?.closest('.card'); setStatus(card?.dataset.id || '', 'pending'); } },
+    ],
   }, 'done');
 }
 
