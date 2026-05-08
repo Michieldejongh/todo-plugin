@@ -43,13 +43,15 @@ const HTML = `<!DOCTYPE html>
   }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
 
-  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  @media (min-width: 640px) { header { padding: 14px 24px; gap: 16px; } }
   header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
   header .count { font-size: 12px; color: var(--muted); }
   header button.add-btn { margin-left: auto; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
   header button.add-btn:hover { background: var(--accent-hover); }
 
-  .add-form { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: none; gap: 8px; }
+  .add-form { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: none; gap: 8px; flex-wrap: wrap; }
+  @media (min-width: 640px) { .add-form { padding: 12px 24px; flex-wrap: nowrap; } }
   .add-form.open { display: flex; }
   .add-form input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 14px; outline: none; }
   .add-form input:focus { border-color: var(--accent); }
@@ -57,8 +59,20 @@ const HTML = `<!DOCTYPE html>
   .add-form button.save { background: var(--accent); color: #fff; border-color: var(--accent); }
   .add-form button.save:hover { background: var(--accent-hover); }
 
-  main { padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1200px; }
-  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  /* Layout — Tailwind breakpoints (sm 640 / md 768 / lg 1024 / xl 1280 / 2xl 1536)
+     Mobile-first: 1 kolom. md: 2 kolommen. lg: 3 kolommen. 2xl: breder centraal. */
+  main {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  @media (min-width: 640px)  { main { padding: 20px 24px; gap: 18px; } }
+  @media (min-width: 768px)  { main { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { main { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; padding: 24px 28px; } }
+  @media (min-width: 1536px) { main { max-width: 1536px; gap: 24px; padding: 28px 32px; } }
 
   .col { display: flex; flex-direction: column; gap: 14px; }
   .col-body { display: flex; flex-direction: column; gap: 12px; }
@@ -95,10 +109,14 @@ const HTML = `<!DOCTYPE html>
   .card.dimmed:hover { opacity: 0.85; }
 
   /* Drie secties: header (compact), body (ruim), footer (compact) — gescheiden door divide-y */
-  .card-header { padding: 12px 16px; }
-  .card-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card-header { padding: 10px 14px; }
+  .card-body { padding: 14px; display: flex; flex-direction: column; gap: 11px; }
   .card-footer { padding: 0; }
   .card-section + .card-section { border-top: 1px solid #e5e7eb; }
+  @media (min-width: 640px) {
+    .card-header { padding: 12px 16px; }
+    .card-body { padding: 16px; gap: 12px; }
+  }
 
   /* contenteditable shared style */
   [contenteditable] { outline: none; border-radius: 3px; }
@@ -209,14 +227,18 @@ const HTML = `<!DOCTYPE html>
 
   /* Card footer — compacte divided action bar */
   .card-footer { display: flex; }
-  .card-footer button { flex: 1; background: transparent; border: none; padding: 10px 8px; font-size: 12.5px; font-weight: 600; color: #0f172a; cursor: pointer; }
+  .card-footer button { flex: 1; background: transparent; border: none; padding: 9px 6px; font-size: 12px; font-weight: 600; color: #0f172a; cursor: pointer; white-space: nowrap; }
   .card-footer button:not(:last-child) { border-right: 1px solid #e5e7eb; }
   .card-footer button:hover { background: #f8fafc; }
   .card-footer button.promote { color: var(--accent); }
   .card-footer button.promote:hover { background: #eff6ff; }
   .card-footer button.demote { color: #64748b; }
-  .card-footer button.danger { color: var(--danger); flex: 0 0 auto; padding: 10px 14px; }
+  .card-footer button.danger { color: var(--danger); flex: 0 0 auto; padding: 9px 12px; }
   .card-footer button.danger:hover { background: #fef2f2; }
+  @media (min-width: 640px) {
+    .card-footer button { padding: 10px 8px; font-size: 12.5px; }
+    .card-footer button.danger { padding: 10px 14px; }
+  }
   .done-date { font-size: 11px; color: var(--done); font-weight: 500; }
   .empty { font-size: 12.5px; color: var(--muted); text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: 8px; }
 </style>
