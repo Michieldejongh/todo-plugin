@@ -2,7 +2,7 @@
 
 > **Eén to-do lijst voor al je Claude Code sessies. Persistent, lokaal, zonder cloud.**
 
-Voor developers die meerdere sessies parallel draaien — per branch, per feature, per worktree — en die versplinterd werk willen centraliseren zonder Linear, Jira of Notion te openen.
+Voor developers die meerdere sessies parallel draaien — per branch, per feature, per worktree — en die versplinterd werk willen centraliseren zonder Linear, Jira, Trello of Notion te openen.
 
 ---
 
