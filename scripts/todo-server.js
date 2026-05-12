@@ -184,6 +184,8 @@ const HTML = `<!DOCTYPE html>
   .modal p { font-size: 13px; color: var(--muted); margin-bottom: 14px; word-break: break-word; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .modal-actions button { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); }
+  .modal-actions button.focus { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .modal-actions button.focus:hover { background: var(--accent-hover); }
   .modal-actions button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
   .modal-actions button.danger:hover { background: #b91c1c; }
 
@@ -658,29 +660,35 @@ function makeCard(t, opts = {}) {
           if (!r.ok) { openBtn.textContent = '!'; setTimeout(() => { openBtn.textContent = '↗'; }, 2000); return; }
           const data = await r.json();
           if (data.alreadyRunning) {
-            // Modal bevestiging
-            const ok = await new Promise(resolve => {
+            // Modal met drie opties: focus iTerm2, nieuwe instantie, annuleer
+            const choice = await new Promise(resolve => {
               const backdrop = document.createElement('div');
               backdrop.className = 'modal-backdrop';
               backdrop.innerHTML = \`<div class="modal" role="dialog" aria-modal="true">
                 <h3>Sessie staat al open</h3>
-                <p>Deze sessie loopt al in een ander venster. Toch een tweede instantie starten?</p>
+                <p>Deze sessie loopt al in een ander venster.</p>
                 <div class="modal-actions">
                   <button class="cancel">Annuleer</button>
-                  <button class="danger">Ja, open toch</button>
+                  <button class="focus">Ga naar iTerm2</button>
+                  <button class="danger">Nieuwe instantie</button>
                 </div>
               </div>\`;
               const close = (v) => { backdrop.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
-              const onKey = e => { if (e.key === 'Escape') close(false); if (e.key === 'Enter') close(true); };
-              backdrop.querySelector('.cancel').onclick = () => close(false);
-              backdrop.querySelector('.danger').onclick = () => close(true);
-              backdrop.onclick = e => { if (e.target === backdrop) close(false); };
+              const onKey = e => { if (e.key === 'Escape') close(null); };
+              backdrop.querySelector('.cancel').onclick = () => close(null);
+              backdrop.querySelector('.focus').onclick = () => close('focus');
+              backdrop.querySelector('.danger').onclick = () => close('new');
+              backdrop.onclick = e => { if (e.target === backdrop) close(null); };
               document.addEventListener('keydown', onKey);
               document.body.appendChild(backdrop);
-              backdrop.querySelector('.danger').focus();
+              backdrop.querySelector('.focus').focus();
             });
-            if (!ok) return;
-            // Forceer open ondanks alreadyRunning
+            if (!choice) return;
+            if (choice === 'focus') {
+              await fetch('/api/focus-iterm', { method: 'POST' });
+              return;
+            }
+            // Forceer nieuwe instantie
             await fetch('/api/open-session', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1139,6 +1147,18 @@ end tell`;
         res.writeHead(500); res.end(e.message);
       }
     });
+    return;
+  }
+
+  // Breng iTerm2 naar voren zonder nieuwe sessie te starten
+  if (url.pathname === '/api/focus-iterm' && req.method === 'POST') {
+    try {
+      execSync(`osascript -e 'tell application "iTerm2" to activate'`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ focused: true }));
+    } catch (e) {
+      res.writeHead(500); res.end(e.message);
+    }
     return;
   }
 
