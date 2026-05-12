@@ -415,6 +415,68 @@ switch (cmd) {
     break;
   }
 
+  // Verrijk de actieve sessietaak met huidige branch, plan-slug en PR.
+  // Schrijft alleen als de bestaande waarde leeg is óf --force is meegegeven.
+  case 'session-update': {
+    const sessionId = argVal('--session');
+    const branch = argVal('--branch');
+    const cwd = argVal('--cwd');
+    const planArg = argVal('--plan');  // expliciete override; lege string blijft leeg
+    const force = args.includes('--force');
+    if (!sessionId) {
+      console.error('Sessie-id ontbreekt (--session)');
+      process.exit(1);
+    }
+    const todos = readTodos();
+    // Pak de meest recente niet-afgeronde taak voor deze sessie; als alleen done bestaat: die.
+    const all = todos.filter(t => t.sessionId === sessionId);
+    if (!all.length) { console.log('NOT_FOUND'); process.exit(2); }
+    const active = all.filter(t => t.status !== 'done');
+    const task = (active.length ? active : all)
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
+
+    const updates = [];
+    const setField = (field, value) => {
+      if (!value) return;
+      if (force || !task[field]) {
+        if (task[field] === value) return;
+        task[field] = value;
+        updates.push(`${field}=${value}`);
+      }
+    };
+    setField('gitBranch', branch);
+    setField('cwd', cwd);
+
+    // Plan: --plan "" expliciet betekent "leeg laten / niet aanraken"; zonder flag autodetect
+    if (planArg) {
+      setField('planSlug', planArg);
+    } else if (force || !task.planSlug) {
+      try {
+        const cutoff = Date.now() - 30 * 60 * 1000;
+        const plans = fs.readdirSync(PLANS_DIR)
+          .filter(f => f.endsWith('.md') && fs.statSync(path.join(PLANS_DIR, f)).mtimeMs > cutoff)
+          .sort((a, b) => fs.statSync(path.join(PLANS_DIR, b)).mtimeMs - fs.statSync(path.join(PLANS_DIR, a)).mtimeMs);
+        if (plans.length === 1) setField('planSlug', plans[0].replace(/\.md$/, ''));
+      } catch {}
+    }
+
+    // PR: detect via gh als we branch+cwd hebben en (force of nog leeg)
+    const effBranch = task.gitBranch;
+    const effCwd = task.cwd;
+    if (effBranch && effCwd && (force || !task.prUrl)) {
+      const url = detectPrUrl(effBranch, effCwd);
+      if (url && url !== task.prUrl) {
+        task.prUrl = url;
+        updates.push(`prUrl=${url}`);
+      }
+    }
+
+    writeTodos(todos);
+    if (!updates.length) console.log(`Geen wijzigingen voor: ${task.title}`);
+    else console.log(`Bijgewerkt (${task.id} — ${task.title}): ${updates.join(', ')}`);
+    break;
+  }
+
   case 'session-add': {
     const flagStart = args.findIndex(a => a.startsWith('--'));
     const title = (flagStart > -1 ? args.slice(0, flagStart) : args).join(' ');
@@ -510,6 +572,7 @@ switch (cmd) {
   /todo-edit <id> <titel>        — taaknaam aanpassen
   /todo-due <id> <YYYY-MM-DD>    — deadline zetten ("clear" om te verwijderen)
   /todo-session                  — huidige Claude sessie als taak toevoegen
+  /todo-session-update           — bestaande sessietaak verrijken met branch/plan/PR
   /todo-session-done             — taak van huidige sessie afronden
   /todo-ids                      — compacte ID-lijst (▶ bezig, ○ open, * huidige branch)
 
