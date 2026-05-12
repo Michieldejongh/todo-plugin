@@ -622,7 +622,7 @@ function makeCard(t, opts = {}) {
     meta.appendChild(wrap);
   }
 
-  // Session title — editable; session id shown as tooltip
+  // Session title — editable + open-in-iterm2 knop
   if (t.sessionId) {
     const wrap = document.createElement('span');
     wrap.className = 'tag';
@@ -639,6 +639,59 @@ function makeCard(t, opts = {}) {
     val.textContent = t.sessionTitle || '';
     ceField(val, t.id, 'sessionTitle', t.sessionTitle || '');
     wrap.appendChild(val);
+
+    // Open-knop: alleen tonen als cwd bekend is (nodig voor cd + resume)
+    if (t.cwd) {
+      const openBtn = document.createElement('a');
+      openBtn.className = 'plan-open';
+      openBtn.textContent = '↗';
+      openBtn.href = '#';
+      openBtn.title = 'Open in Claude Code (iTerm2)';
+      openBtn.onclick = async (e) => {
+        e.preventDefault();
+        try {
+          const r = await fetch('/api/open-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: t.sessionId, cwd: t.cwd }),
+          });
+          if (!r.ok) { openBtn.textContent = '!'; setTimeout(() => { openBtn.textContent = '↗'; }, 2000); return; }
+          const data = await r.json();
+          if (data.alreadyRunning) {
+            // Modal bevestiging
+            const ok = await new Promise(resolve => {
+              const backdrop = document.createElement('div');
+              backdrop.className = 'modal-backdrop';
+              backdrop.innerHTML = \`<div class="modal" role="dialog" aria-modal="true">
+                <h3>Sessie staat al open</h3>
+                <p>Deze sessie loopt al in een ander venster. Toch een tweede instantie starten?</p>
+                <div class="modal-actions">
+                  <button class="cancel">Annuleer</button>
+                  <button class="danger">Ja, open toch</button>
+                </div>
+              </div>\`;
+              const close = (v) => { backdrop.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+              const onKey = e => { if (e.key === 'Escape') close(false); if (e.key === 'Enter') close(true); };
+              backdrop.querySelector('.cancel').onclick = () => close(false);
+              backdrop.querySelector('.danger').onclick = () => close(true);
+              backdrop.onclick = e => { if (e.target === backdrop) close(false); };
+              document.addEventListener('keydown', onKey);
+              document.body.appendChild(backdrop);
+              backdrop.querySelector('.danger').focus();
+            });
+            if (!ok) return;
+            // Forceer open ondanks alreadyRunning
+            await fetch('/api/open-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionId: t.sessionId, cwd: t.cwd, force: true }),
+            });
+          }
+        } catch { openBtn.textContent = '!'; setTimeout(() => { openBtn.textContent = '↗'; }, 2000); }
+      };
+      wrap.appendChild(openBtn);
+    }
+
     meta.appendChild(wrap);
   }
 
@@ -1033,6 +1086,62 @@ const server = http.createServer((req, res) => {
   }
 
   // Open plan file with default macOS editor
+  // Open een Claude Code sessie in een nieuw iTerm2-tabblad via osascript
+  if (url.pathname === '/api/open-session' && req.method === 'POST') {
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const { sessionId, cwd, force } = JSON.parse(body);
+        if (!sessionId || !/^[a-f0-9-]+$/.test(sessionId)) {
+          res.writeHead(400); res.end('Invalid sessionId'); return;
+        }
+        if (!cwd || typeof cwd !== 'string') {
+          res.writeHead(400); res.end('Missing cwd'); return;
+        }
+
+        // Check of sessie al een actief proces heeft
+        let alreadyRunning = false;
+        if (!force) {
+          try {
+            const sessDir = path.join(os.homedir(), '.claude', 'sessions');
+            const files = fs.readdirSync(sessDir);
+            for (const f of files) {
+              try {
+                const d = JSON.parse(fs.readFileSync(path.join(sessDir, f), 'utf8'));
+                if (d.sessionId === sessionId) {
+                  try { process.kill(d.pid, 0); alreadyRunning = true; } catch {}
+                  break;
+                }
+              } catch {}
+            }
+          } catch {}
+        }
+
+        if (!alreadyRunning || force) {
+          // Veilig quoten: gebruik JSON.stringify voor de hele shell-string
+          const cmd = `cd ${JSON.stringify(cwd)} && claude --resume ${sessionId}`;
+          const script = `tell application "iTerm2"
+  activate
+  tell current window
+    create tab with default profile
+    tell current session of current tab
+      write text ${JSON.stringify(cmd)}
+    end tell
+  end tell
+end tell`;
+          execSync(`osascript -e ${JSON.stringify(script)}`);
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ opened: true, alreadyRunning }));
+      } catch (e) {
+        res.writeHead(500); res.end(e.message);
+      }
+    });
+    return;
+  }
+
   if (url.pathname === '/api/open-plan' && req.method === 'POST') {
     let body = '';
     req.on('data', d => body += d);
